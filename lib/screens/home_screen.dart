@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/user_service.dart';
-import '../state/user_provider.dart';
-import '../models/user.dart';
+import '../state/firestore_providers.dart';
+import '../models/user_model.dart';
 import 'journal_screen.dart';
 import 'challenge_screen.dart';
 import 'profile_screen.dart';
@@ -19,26 +18,19 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final userService = ref.watch(userServiceProvider);
+    final userAsync = ref.watch(userDataProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home'),
       ),
-      body: StreamBuilder<User?>(
-        stream: userService.streamCurrentUser(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
+      body: userAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (UserModel? user) {
+          if (user == null) {
             return const Center(child: Text('User data not found.'));
           }
-
-          final user = snapshot.data!;
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -47,7 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 Text('Welcome!', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 16),
-                Text('Tokens: ${user.tokenBalance}', style: Theme.of(context).textTheme.titleLarge),
+                Text('Tokens: ${user.tokenCount}', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 16),
                 Text('Daily Challenge Status:', style: Theme.of(context).textTheme.titleLarge),
                 // TODO: Display actual challenge status based on user.dailyChallengeStatus
@@ -64,25 +56,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                  const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    // TODO: Add navigation to other screens like Journal, Challenge, Profile, Quote
-                  },
-                const SizedBox(height: 16),
-                Text('Recent Journal Entries:', style: Theme.of(context).textTheme.titleLarge),
-                // TODO: Display recent journal entries
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: user.journalEntries.length,
-                    itemBuilder: (context, index) {
-                      final entry = user.journalEntries[index];
-                      // TODO: Format journal entry display
-                      return ListTile(
-                        title: Text(entry['entry'] ?? 'No entry text'),
-                        subtitle: Text(entry['timestamp']?.toString() ?? 'No timestamp'),
-                      );
-                    },
-                  ),
+                  onPressed: () {},
+                  child: const Text('More Features Coming Soon'),
                 ),
+                const SizedBox(height: 16),
+                const Text('Recent Journal Entries feature coming soon'),
               ],
             ),
           );
