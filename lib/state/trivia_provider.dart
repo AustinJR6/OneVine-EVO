@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 import '../state/http_provider.dart';
+import '../services/http_service.dart';
 
 class TriviaState {
   final String? story;
@@ -43,17 +43,15 @@ class TriviaNotifier extends StateNotifier<TriviaState> {
     state = state.copyWith(loading: true, error: null, resultText: null);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final res = await httpService.post('getTriviaQuestion', {});
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        state = state.copyWith(
-          story: data['story'] as String?,
-          storyId: data['id'] as String?,
-          loading: false,
-        );
-      } else {
-        state = state.copyWith(error: 'Error ${res.statusCode}', loading: false);
-      }
+      final idToken = await ref.read(firebaseAuthProvider).currentUser?.getIdToken();
+      final data = await httpService.post('getTriviaQuestion', {}, idToken: idToken);
+      state = state.copyWith(
+        story: data['story'] as String?,
+        storyId: data['id'] as String?,
+        loading: false,
+      );
+    } on HttpServiceException catch (e) {
+      state = state.copyWith(error: e.message, loading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
     }
@@ -70,27 +68,25 @@ class TriviaNotifier extends StateNotifier<TriviaState> {
     state = state.copyWith(loading: true, error: null);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final res = await httpService.post('validateTriviaAnswer', {
+      final idToken = await auth.currentUser?.getIdToken();
+      final data = await httpService.post('validateTriviaAnswer', {
         'id': state.storyId,
         'religionGuess': religionGuess,
         'storyGuess': storyGuess,
+      }, idToken: idToken);
+      final score = (data['score'] as num?)?.toInt() ?? 0;
+      await firestore.updateUser(user.uid, {
+        'individualPoints': userData.individualPoints + score,
       });
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final score = (data['score'] as num?)?.toInt() ?? 0;
-        await firestore.updateUser(user.uid, {
-          'individualPoints': userData.individualPoints + score,
-        });
-        if (userData.religion != null) {
-          await firestore.incrementReligionPoints(userData.religion!, score);
-        }
-        if (userData.organizationId != null) {
-          await firestore.incrementOrganizationPoints(userData.organizationId!, score);
-        }
-        state = state.copyWith(resultText: data['resultText'] as String?, loading: false);
-      } else {
-        state = state.copyWith(error: 'Error ${res.statusCode}', loading: false);
+      if (userData.religion != null) {
+        await firestore.incrementReligionPoints(userData.religion!, score);
       }
+      if (userData.organizationId != null) {
+        await firestore.incrementOrganizationPoints(userData.organizationId!, score);
+      }
+      state = state.copyWith(resultText: data['resultText'] as String?, loading: false);
+    } on HttpServiceException catch (e) {
+      state = state.copyWith(error: e.message, loading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
     }

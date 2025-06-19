@@ -1,17 +1,30 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 import '../state/http_provider.dart';
+import '../services/http_service.dart';
 
 class ReligionAIState {
+  final String question;
   final String response;
   final bool loading;
   final String? error;
-  const ReligionAIState({this.response = '', this.loading = false, this.error});
 
-  ReligionAIState copyWith({String? response, bool? loading, String? error}) {
+  const ReligionAIState({
+    this.question = '',
+    this.response = '',
+    this.loading = false,
+    this.error,
+  });
+
+  ReligionAIState copyWith({
+    String? question,
+    String? response,
+    bool? loading,
+    String? error,
+  }) {
     return ReligionAIState(
+      question: question ?? this.question,
       response: response ?? this.response,
       loading: loading ?? this.loading,
       error: error,
@@ -23,6 +36,10 @@ class ReligionAINotifier extends StateNotifier<ReligionAIState> {
   ReligionAINotifier(this.ref) : super(const ReligionAIState());
   final Ref ref;
 
+  void updateQuestion(String q) {
+    state = state.copyWith(question: q);
+  }
+
   Future<void> askQuestion(String question) async {
     final trimmed = question.trim();
     if (trimmed.isEmpty) return;
@@ -32,21 +49,23 @@ class ReligionAINotifier extends StateNotifier<ReligionAIState> {
     final userData = await ref.read(firestoreServiceProvider).getUser(user.uid);
     if (userData == null) return;
 
-    state = state.copyWith(loading: true, error: null);
+    state = state.copyWith(loading: true, error: null, question: trimmed);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final res = await httpService.post('askGeminiV2', {
+      final idToken = await auth.currentUser?.getIdToken();
+      final data = await httpService.post('askGeminiV2', {
         'history': [
           {'role': 'user', 'text': trimmed}
         ],
         'religion': userData.religion ?? 'spiritual',
-      });
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        state = state.copyWith(response: data['text'] as String? ?? '', loading: false);
-      } else {
-        state = state.copyWith(error: 'Error ${res.statusCode}', loading: false);
-      }
+      }, idToken: idToken);
+
+      state = state.copyWith(
+        response: data['text'] as String? ?? '',
+        loading: false,
+      );
+    } on HttpServiceException catch (e) {
+      state = state.copyWith(error: e.message, loading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
     }
