@@ -58,11 +58,15 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
     await firestore.updateUser(user.uid, {'tokenCount': userData.tokenCount - 1});
 
     try {
+      final conversation = newMessages
+          .map((m) => "${m['role']}: ${m['text']}")
+          .join('\n');
+      final idToken = await auth.currentUser?.getIdToken();
       final httpService = ref.read(httpServiceProvider);
       final res = await httpService.post('askGeminiV2', {
-        'history': newMessages,
+        'conversation': conversation,
         'religion': userData.religion ?? 'spiritual',
-      });
+      }, idToken: idToken);
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final reply = data['text'] as String? ?? '';
@@ -71,7 +75,10 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
           loading: false,
         );
       } else {
-        throw Exception('Failed to get response');
+        state = state.copyWith(
+          messages: [...newMessages, {'role': 'ai', 'text': 'Error ${res.statusCode}'}],
+          loading: false,
+        );
       }
     } catch (e) {
       state = state.copyWith(

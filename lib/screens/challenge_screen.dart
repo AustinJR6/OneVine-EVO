@@ -36,6 +36,16 @@ class ChallengeScreen extends ConsumerWidget {
             );
           }
 
+          if (state.error != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.error!)),
+              );
+              ref.read(dailyChallengeProvider.notifier)
+                  .state = state.copyWith(error: null);
+            });
+          }
+
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -87,18 +97,26 @@ class ChallengeScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async {
-                          await ref.read(dailyChallengeProvider.notifier).handleComplete();
-                        },
+                        onPressed: state.loading
+                            ? null
+                            : () async {
+                                await ref
+                                    .read(dailyChallengeProvider.notifier)
+                                    .handleComplete();
+                              },
                         child: const Text('Mark Completed'),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async {
-                          await ref.read(dailyChallengeProvider.notifier).handleSkip();
-                        },
+                        onPressed: state.loading || user.tokenCount < 3
+                            ? null
+                            : () async {
+                                await ref
+                                    .read(dailyChallengeProvider.notifier)
+                                    .handleSkip();
+                              },
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                         child: const Text('Skip Challenge'),
                       ),
