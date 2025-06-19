@@ -1,32 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/challenge_provider.dart'; // Assuming your ChallengeProvider is here
 
-class ChallengeScreen extends StatelessWidget {
+class ChallengeScreen extends ConsumerWidget {
   const ChallengeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily Challenge'),
       ),
-      body: Consumer<ChallengeProvider>(
-        builder: (context, challengeProvider, child) {
+      body: Consumer(
+        builder: (context, WidgetRef ref, _) {
+          final challengeProvider = ref.watch(challengeProviderProvider);
           final dailyChallenge = challengeProvider.dailyChallenge;
-          final user = challengeProvider.user;
+          final tokenBalance = challengeProvider.tokenCount;
+          final skipCount = challengeProvider.weeklySkipCount;
 
           if (challengeProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (dailyChallenge == null || user == null) {
-            return const Center(child: Text('Could not load daily challenge or user data.'));
+          if (dailyChallenge == null) {
+            return const Center(child: Text('Could not load daily challenge.'));
           }
 
-          final freeSkipsRemaining = user.weeklySkipCount == 0 ? 1 : 0;
-          final nextSkipCost = user.weeklySkipCount > 0 ? (1 << (user.weeklySkipCount - 1)) : 0;
+          final freeSkipsRemaining = skipCount == 0 ? 1 : 0;
+          final nextSkipCost = skipCount > 0 ? (1 << (skipCount - 1)) : 0;
 
 
           return Padding(
@@ -66,7 +68,7 @@ class ChallengeScreen extends StatelessWidget {
                        crossAxisAlignment: CrossAxisAlignment.start,
                        children: [
                          Text(
-                           'Tokens: ${user.tokenBalance}',
+                           'Tokens: $tokenBalance',
                            style: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
                          ),
                          const SizedBox(height: 8.0),
@@ -100,7 +102,7 @@ class ChallengeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8.0),
                   ElevatedButton(
-                    onPressed: user.tokenBalance >= nextSkipCost ? () async {
+                    onPressed: tokenBalance >= nextSkipCost ? () async {
                        await challengeProvider.skipChallenge();
                        // Show skip feedback
                        String feedbackMessage = freeSkipsRemaining > 0

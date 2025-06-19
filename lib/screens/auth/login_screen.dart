@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:onevine/services/auth_service.dart';
-import 'package:onevine/screens/auth/signup_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../state/auth_providers.dart';
+import 'signup_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final AuthService _authService = AuthService();
   String _errorMessage = '';
 
   @override
@@ -70,13 +71,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() async {
     try {
-      await _authService.signInWithEmailAndPassword(
+      final authService = ref.read(authServiceProvider);
+      await authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      // Navigate to the home screen or dashboard upon successful login
-      // Example:
-      // Navigator.pushReplacementNamed(context, '/home');
+      if (mounted) {
+        context.go('/home');
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = e.message ?? 'An unknown error occurred.';

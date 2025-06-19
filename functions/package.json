@@ -1,0 +1,12 @@
+{
+  "name": "onevine-functions",
+  "engines": { "node": "18" },
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^11.10.1",
+    "firebase-functions": "^4.4.0",
+    "axios": "^1.6.7",
+    "express": "^4.18.2"
+  }
+}

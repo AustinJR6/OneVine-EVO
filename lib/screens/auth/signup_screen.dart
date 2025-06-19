@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:onevine_flutter/services/auth_service.dart';
-import 'login_screen.dart'; // Assuming login_screen.dart is in the same directory
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../state/auth_providers.dart';
+import 'login_screen.dart';
+import 'package:go_router/go_router.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  _SignupScreenState createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -25,13 +26,12 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     if (_formKey.currentState!.validate()) {
       try {
-        await Provider.of<AuthService>(context, listen: false).signUp(
+        final authService = ref.read(authServiceProvider);
+        await authService.registerWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-        // Navigate to next screen or show success message
       } catch (e) {
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to sign up: $e')),
         );
@@ -65,8 +65,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               ElevatedButton(onPressed: _signup, child: const Text('Sign Up')),
               TextButton(
-                onPressed: () => Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginScreen())),
+                onPressed: () => context.go('/login'),
                 child: const Text('Already have an account? Log in'),
               ),
             ],

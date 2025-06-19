@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/user_service.dart';
+import '../state/user_provider.dart';
 import '../models/user.dart';
 import 'journal_screen.dart';
 import 'challenge_screen.dart';
@@ -8,17 +9,17 @@ import 'profile_screen.dart';
 import 'quote_screen.dart';
 import 'religion_ai_screen.dart'; // Import the ReligionAIScreen
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final userService = Provider.of<UserService>(context);
+    final userService = ref.watch(userServiceProvider);
 
     return Scaffold(
       appBar: AppBar(
