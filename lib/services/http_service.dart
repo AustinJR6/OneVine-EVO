@@ -1,0 +1,23 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+
+class HttpService {
+  final String baseUrl;
+  HttpService({required this.baseUrl});
+
+  Future<http.Response> post(String path, Map<String, dynamic> body,
+      {Map<String, String>? headers}) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final idToken = await user?.getIdToken();
+
+    final requestHeaders = <String, String>{
+      'Content-Type': 'application/json',
+      if (headers != null) ...headers,
+      if (idToken != null) 'Authorization': 'Bearer $idToken',
+    };
+
+    final uri = Uri.parse('$baseUrl/$path');
+    return http.post(uri, headers: requestHeaders, body: jsonEncode(body));
+  }
+}
