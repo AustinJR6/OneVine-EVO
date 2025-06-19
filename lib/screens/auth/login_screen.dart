@@ -16,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
+  bool _loading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +42,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 24.0),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('Login'),
-            ),
+            if (_loading)
+              const CircularProgressIndicator()
+            else
+              ElevatedButton(
+                onPressed: _login,
+                child: const Text('Login'),
+              ),
             if (_errorMessage.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -70,6 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _login() async {
+    setState(() { _loading = true; _errorMessage = ''; });
     try {
       final authService = ref.read(authServiceProvider);
       await authService.signInWithEmailAndPassword(
@@ -87,6 +92,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() {
         _errorMessage = 'An unexpected error occurred.';
       });
+    } finally {
+      if (mounted) setState(() { _loading = false; });
     }
   }
 
