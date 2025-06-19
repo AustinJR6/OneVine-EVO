@@ -1,110 +1,62 @@
 import 'package:flutter/material.dart';
-import '../services/gemini_service.dart'; // Assuming your GeminiService is here
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../state/religion_ai_provider.dart';
 
-class ReligionAIScreen extends StatefulWidget {
+class ReligionAIScreen extends ConsumerStatefulWidget {
   const ReligionAIScreen({super.key});
 
   @override
-  _ReligionAIScreenState createState() => _ReligionAIScreenState();
+  ConsumerState<ReligionAIScreen> createState() => _ReligionAIScreenState();
 }
 
-class _ReligionAIScreenState extends State<ReligionAIScreen> {
-  final TextEditingController _promptController = TextEditingController();
-  final GeminiService _geminiService = GeminiService();
-  String _geminiResponse = '';
-  bool _isLoading = false;
-
-  void _getGeminiPrompt() async {
-    setState(() {
-      _isLoading = true;
-      _geminiResponse = ''; // Clear previous response
-    });
-
-    final userPrompt = _promptController.text;
-    if (userPrompt.isEmpty) {
-      setState(() {
-        _geminiResponse = 'Please enter a topic or question.';
-        _isLoading = false;
-      });
-      return;
-    }
-
-    // TODO: Implement actual Gemini API call using _geminiService
-    // For now, simulate a response
-    await Future.delayed(const Duration(seconds: 2)); // Simulate API call delay
-    final simulatedResponse = "Reflect on the meaning of patience in times of hardship."; // Placeholder response
-
-    setState(() {
-      _geminiResponse = simulatedResponse; // Display Gemini's response
-      _isLoading = false;
-    });
-
-    // In a real scenario, you would call:
-    // try {
-    //   final response = await _geminiService.getSpiritualReflection(userPrompt);
-    //   setState(() {
-    //     _geminiResponse = response;
-    //     _isLoading = false;
-    //   });
-    // } catch (e) {
-    //   setState(() {
-    //     _geminiResponse = 'Error getting reflection: ${e.toString()}';
-    //     _isLoading = false;
-    //   });
-    // }
-  }
+class _ReligionAIScreenState extends ConsumerState<ReligionAIScreen> {
+  final TextEditingController _controller = TextEditingController();
 
   @override
   void dispose() {
-    _promptController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(religionAIProvider);
+    final notifier = ref.read(religionAIProvider.notifier);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Spiritual Reflection (AI)'),
-      ),
+      appBar: AppBar(title: const Text('Ask Spiritual Question')),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Get a spiritual reflection prompt from our AI:',
-              style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16.0),
             TextField(
-              controller: _promptController,
+              controller: _controller,
+              onChanged: notifier.updateQuestion,
               decoration: const InputDecoration(
-                hintText: 'Enter a topic (e.g., gratitude, forgiveness)',
+                hintText: 'Enter your question',
                 border: OutlineInputBorder(),
               ),
-              maxLines: null,
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: _isLoading ? null : _getGeminiPrompt,
-              child: _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Get Prompt'),
+              onPressed: state.loading
+                  ? null
+                  : () => notifier.askQuestion(_controller.text),
+              child: state.loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Ask'),
             ),
-            const SizedBox(height: 16.0),
-            if (_geminiResponse.isNotEmpty)
+            const SizedBox(height: 12),
+            if (state.error != null)
+              Text(state.error!, style: const TextStyle(color: Colors.red)),
+            if (state.response.isNotEmpty)
               Expanded(
-                child: Card(
-                  elevation: 2.0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        _geminiResponse,
-                        style: const TextStyle(fontSize: 16.0),
-                      ),
-                    ),
-                  ),
+                child: SingleChildScrollView(
+                  child: Text(state.response),
                 ),
               ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import '../state/http_provider.dart';
+import '../services/http_service.dart';
 import '../services/firestore_service.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
@@ -63,23 +64,21 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
           .join('\n');
       final idToken = await auth.currentUser?.getIdToken();
       final httpService = ref.read(httpServiceProvider);
-      final res = await httpService.post('askGeminiV2', {
+      final data = await httpService.post('askGeminiV2', {
         'conversation': conversation,
         'religion': userData.religion ?? 'spiritual',
       }, idToken: idToken);
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final reply = data['text'] as String? ?? '';
-        state = state.copyWith(
-          messages: [...newMessages, {'role': 'ai', 'text': reply}],
-          loading: false,
-        );
-      } else {
-        state = state.copyWith(
-          messages: [...newMessages, {'role': 'ai', 'text': 'Error ${res.statusCode}'}],
-          loading: false,
-        );
-      }
+
+      final reply = data['text'] as String? ?? '';
+      state = state.copyWith(
+        messages: [...newMessages, {'role': 'ai', 'text': reply}],
+        loading: false,
+      );
+    } on HttpServiceException catch (e) {
+      state = state.copyWith(
+        messages: [...newMessages, {'role': 'ai', 'text': e.message}],
+        loading: false,
+      );
     } catch (e) {
       state = state.copyWith(
         messages: [...newMessages, {'role': 'ai', 'text': 'Error: $e'}],

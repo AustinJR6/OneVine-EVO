@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
 import '../state/http_provider.dart';
+import '../services/http_service.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 import '../models/user_model.dart';
@@ -55,22 +55,18 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
       final auth = ref.read(firebaseAuthProvider);
       final idToken = await auth.currentUser?.getIdToken();
       final httpService = ref.read(httpServiceProvider);
-      final res = await httpService.post('getDailyChallenge', {
+      final data = await httpService.post('getDailyChallenge', {
         'religion': userData.religion ?? 'spiritual',
       }, idToken: idToken);
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final challenge = data['text'] as String? ?? '';
-        await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
-          'lastChallenge': Timestamp.now(),
-          'lastChallengeText': challenge,
-        });
-        state = DailyChallengeState(challengeText: challenge);
-      } else {
-        state = state.copyWith(
-            error: 'Error ${res.statusCode}: ${res.body}');
-      }
+      final challenge = data['text'] as String? ?? '';
+      await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
+        'lastChallenge': Timestamp.now(),
+        'lastChallengeText': challenge,
+      });
+      state = DailyChallengeState(challengeText: challenge);
+    } on HttpServiceException catch (e) {
+      state = state.copyWith(error: e.message);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     } finally {
@@ -112,7 +108,9 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
           'religion': userData.religion ?? 'spiritual',
           'streak': newStreak,
         }, idToken: idToken);
-      } catch (_) {}
+      } on HttpServiceException {
+        // Ignore blessing errors silently
+      }
     }
 
     if (userData.religion != null) {
