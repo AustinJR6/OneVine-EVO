@@ -7,8 +7,8 @@ class ConfessionalScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = ref.watch(confessionalProvider);
-    final controller = TextEditingController();
+    final state = ref.watch(confessionalProvider);
+    final controller = TextEditingController(text: state.input);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Confessional')),
@@ -16,9 +16,9 @@ class ConfessionalScreen extends ConsumerWidget {
         children: [
           Expanded(
             child: ListView.builder(
-              itemCount: provider.messages.length,
+              itemCount: state.messages.length,
               itemBuilder: (context, index) {
-                final msg = provider.messages[index];
+                final msg = state.messages[index];
                 final isUser = msg['role'] == 'user';
                 return ListTile(
                   title: Align(
@@ -36,7 +36,7 @@ class ConfessionalScreen extends ConsumerWidget {
               },
             ),
           ),
-          if (provider.isLoading) const LinearProgressIndicator(),
+          if (state.loading) const LinearProgressIndicator(),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -53,10 +53,7 @@ class ConfessionalScreen extends ConsumerWidget {
                     final text = controller.text.trim();
                     if (text.isEmpty) return;
                     controller.clear();
-                    await ref.read(confessionalProvider).sendMessage(
-                          text: text,
-                          religion: 'Christian', // placeholder
-                        );
+                    await ref.read(confessionalProvider.notifier).sendMessage(text);
                   },
                 )
               ],

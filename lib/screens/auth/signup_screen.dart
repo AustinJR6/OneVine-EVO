@@ -38,15 +38,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         );
         if (user != null) {
           await firestore.createUser(user.uid, {
-            'tokenBalance': 0,
-            'weeklySkipCount': 0,
-            'journalEntries': [],
-            'dailyChallengeStatus': {},
+            'tokenCount': 10,
+            'streak': 0,
+            'individualPoints': 0,
+            'streakMilestones': {},
           });
           if (mounted) context.go('/home');
         }
       } catch (e) {
         setState(() { _error = 'Failed to sign up'; });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to sign up')),
+          );
+        }
       } finally {
         if (mounted) setState(() { _loading = false; });
       }

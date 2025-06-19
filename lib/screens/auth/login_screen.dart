@@ -88,10 +88,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() {
         _errorMessage = e.message ?? 'An unknown error occurred.';
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_errorMessage)),
+        );
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'An unexpected error occurred.';
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('An unexpected error occurred.')),
+        );
+      }
     } finally {
       if (mounted) setState(() { _loading = false; });
     }

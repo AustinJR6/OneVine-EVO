@@ -1,37 +1,80 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/functions_service.dart';
-import 'functions_provider.dart';
+import '../services/firestore_service.dart';
+import 'auth_providers.dart';
+import 'firestore_providers.dart';
 
-class ConfessionalProvider extends ChangeNotifier {
-  ConfessionalProvider(this._functions);
+class ConfessionalState {
+  final List<Map<String, String>> messages;
+  final bool loading;
+  final String input;
+  final String? error;
 
-  final FunctionsService _functions;
+  const ConfessionalState({
+    this.messages = const [],
+    this.loading = false,
+    this.input = '',
+    this.error,
+  });
 
-  final List<Map<String, String>> _messages = [];
-  List<Map<String, String>> get messages => List.unmodifiable(_messages);
-  bool _loading = false;
-  bool get isLoading => _loading;
-
-  Future<void> sendMessage({required String text, required String religion}) async {
-    _messages.add({'role': 'user', 'text': text});
-    _loading = true;
-    notifyListeners();
-    try {
-      final response = await _functions.askGemini(
-        history: _messages,
-        religion: religion,
-      );
-      _messages.add({'role': 'bot', 'text': response});
-    } catch (e) {
-      _messages.add({'role': 'bot', 'text': 'Error: $e'});
-    }
-    _loading = false;
-    notifyListeners();
+  ConfessionalState copyWith({
+    List<Map<String, String>>? messages,
+    bool? loading,
+    String? input,
+    String? error,
+  }) {
+    return ConfessionalState(
+      messages: messages ?? this.messages,
+      loading: loading ?? this.loading,
+      input: input ?? this.input,
+      error: error,
+    );
   }
 }
 
-final confessionalProvider = ChangeNotifierProvider<ConfessionalProvider>((ref) {
-  final functions = ref.read(functionsServiceProvider);
-  return ConfessionalProvider(functions);
+class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
+  ConfessionalNotifier(this.ref) : super(const ConfessionalState());
+
+  final Ref ref;
+
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+    final auth = ref.read(firebaseAuthProvider);
+    final user = auth.currentUser;
+    if (user == null) return;
+    final firestore = ref.read(firestoreServiceProvider);
+    final userData = await firestore.getUser(user.uid);
+    if (userData == null) return;
+
+    final newMessages = [...state.messages, {'role': 'user', 'text': text}];
+    state = state.copyWith(messages: newMessages, loading: true, input: '');
+
+    if (userData.tokenCount <= 0) {
+      state = state.copyWith(loading: false, error: 'Out of tokens');
+      return;
+    }
+
+    await firestore.updateUser(user.uid, {'tokenCount': userData.tokenCount - 1});
+
+    try {
+      final response = await ref.read(functionsServiceProvider).askGemini(
+        history: newMessages,
+        religion: userData.religion ?? 'spiritual',
+      );
+      state = state.copyWith(
+        messages: [...newMessages, {'role': 'ai', 'text': response}],
+        loading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        messages: [...newMessages, {'role': 'ai', 'text': 'Error: $e'}],
+        loading: false,
+      );
+    }
+  }
+}
+
+final confessionalProvider =
+    StateNotifierProvider<ConfessionalNotifier, ConfessionalState>((ref) {
+  return ConfessionalNotifier(ref);
 });
