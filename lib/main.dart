@@ -3,96 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
-// Placeholder screens
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+import 'screens/auth/login_screen.dart';
+import 'screens/home_screen.dart';
+import 'state/auth_providers.dart';
 
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+  late final StreamSubscription<dynamic> _subscription;
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Login Screen'),
-            ElevatedButton(
-              onPressed: () async {
-                // TODO: Implement actual login logic
-                // For now, simulate a successful login
-                // In a real app, you would use FirebaseAuth.instance.signInWithEmailAndPassword, etc.
-                context.read(isLoggedInProvider).state = true;
-              },
-              child: const Text('Simulate Login'),
-            ),
-          ],
-        ),
-      ),
-    );
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Home Screen'),
-            ElevatedButton(
-              onPressed: () async {
-                // TODO: Implement actual logout logic
-                // For now, simulate a successful logout
-                // In a real app, you would use FirebaseAuth.instance.signOut();
-                context.read(isLoggedInProvider).state = false;
-              },
-              child: const Text('Simulate Logout'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Riverpod provider for authentication state
-final isLoggedInProvider = StateProvider<bool>((ref) {
-  // Listen to Firebase Auth state changes
-  final authStateChanges = FirebaseAuth.instance.authStateChanges();
-  return authStateChanges.map((user) => user != null).initialData(FirebaseAuth.instance.currentUser != null).requireValue;
+final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authStateChangesProvider);
+  return GoRouter(
+    refreshListenable: GoRouterRefreshStream(authState.asStream()),
+    initialLocation: '/login',
+    routes: [
+      GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+      GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
+    ],
+    redirect: (context, state) {
+      final loggedIn = ref.read(currentUserProvider) != null;
+      final loggingIn = state.location == '/login';
+      if (!loggedIn) return loggingIn ? null : '/login';
+      if (loggingIn) return '/home';
+      return null;
+    },
+  );
 });
-
-
-// GoRouter configuration
-final _router = GoRouter(
-  routes: [
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeScreen(),
-    ),
-  ],
-  redirect: (context, state) {
-    final isLoggedIn = context.read(isLoggedInProvider).state;
-    final isLoggingIn = state.location == '/login';
-
-    // Redirect logic
-    if (isLoggedIn && isLoggingIn) return '/home';
-    if (!isLoggedIn && !isLoggingIn && state.location != '/') return '/login'; // Redirect to login if not logged in and not already on login
-    return null;
-  },
-  // Set the initial location based on auth state
-  initialLocation: FirebaseAuth.instance.currentUser != null ? '/home' : '/login',
-);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -110,7 +57,7 @@ class MyApp extends ConsumerWidget { // Changed to ConsumerWidget to access prov
 
   @override
   Widget build(BuildContext context, WidgetRef ref) { // Added WidgetRef
-    final router = ref.watch(_router); // Watch the router provider
+    final router = ref.watch(routerProvider); // Watch the router provider
 
     return MaterialApp.router(
       title: 'OneVine',

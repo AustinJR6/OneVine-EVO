@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:onevine/models/daily_challenge.dart'; // Adjust import path
-import 'package:onevine/services/user_service.dart'; // Adjust import path
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Timestamp
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/daily_challenge.dart';
+import '../services/user_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_provider.dart';
 
 class ChallengeProvider with ChangeNotifier {
   final UserService _userService;
@@ -84,3 +86,7 @@ class ChallengeProvider with ChangeNotifier {
   }
 
 }
+final challengeProviderProvider = ChangeNotifierProvider<ChallengeProvider>((ref) {
+  final userService = ref.read(userServiceProvider);
+  return ChallengeProvider(userService);
+});
