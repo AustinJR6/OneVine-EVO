@@ -1,14 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart'; // Import Material for @required (or use required keyword)
-import 'dart:math'; // Import for random selection
 
-import '../models/user.dart'; // Assuming your User model is here
-import '../models/daily_challenge.dart'; // Assuming your DailyChallenge model is here
+import '../models/user.dart';
+import '../models/daily_challenge.dart';
+import 'functions_service.dart';
 
 class UserService with ChangeNotifier { // Added ChangeNotifier for Provider
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FunctionsService _functions = FunctionsService();
 
   // Reference to the users collection
   CollectionReference _usersCollection(String uid) {
@@ -61,36 +62,7 @@ class UserService with ChangeNotifier { // Added ChangeNotifier for Provider
     final todayDateString = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
     try {
-      // --- Challenge Selection Logic ---
-      final challengePoolSnapshot = await _challengePoolDoc.get();
-      final challengePool = challengePoolSnapshot.data() as Map<String, dynamic>?;
-      final List<String> challenges = List<String>.from(challengePool?['challenges'] ?? []);
-
-      if (challenges.isEmpty) {
-        print("Challenge pool is empty.");
-        return;
-      }
-
-      // Fetch user's challenges for the last 30 days
-      final past30Days = today.subtract(const Duration(days: 30));
-      final recentChallengesSnapshot = await _usersCollection(user.uid)
-          .where('timestampAssigned', isGreaterThanOrEqualTo: Timestamp.fromDate(past30Days))
-          .get();
-
-      final recentChallengeTexts = recentChallengesSnapshot.docs.map((doc) => doc['challengeText'] as String).toList();
-
-      // Select a random challenge that hasn't been used recently
-      final availableChallenges = challenges.where((challenge) => !recentChallengeTexts.contains(challenge)).toList();
-
-      String selectedChallengeText;
-      if (availableChallenges.isNotEmpty) {
-        final random = Random();
-        selectedChallengeText = availableChallenges[random.nextInt(availableChallenges.length)];
-      } else {
-        // If all challenges have been used recently, allow repetition
-        final random = Random();
-        selectedChallengeText = challenges[random.nextInt(challenges.length)];
-      }
+      final selectedChallengeText = await _functions.getDailyChallenge(religion: 'Christian');
 
       // --- Skip Cost Calculation ---
       final userData = await getUserData(user.uid);
