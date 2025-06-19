@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
-import '../services/functions_service.dart';
+import '../state/http_provider.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 import '../models/user_model.dart';
@@ -46,13 +47,21 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
     state = state.copyWith(loading: true, error: null);
     try {
-      final functions = ref.read(functionsServiceProvider);
-      final challenge = await functions.getDailyChallenge(religion: userData.religion ?? 'spiritual');
-      await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
-        'lastChallenge': Timestamp.now(),
-        'lastChallengeText': challenge,
+      final httpService = ref.read(httpServiceProvider);
+      final res = await httpService.post('getDailyChallenge', {
+        'religion': userData.religion ?? 'spiritual',
       });
-      state = DailyChallengeState(challengeText: challenge);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final challenge = data['text'] as String? ?? '';
+        await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
+          'lastChallenge': Timestamp.now(),
+          'lastChallengeText': challenge,
+        });
+        state = DailyChallengeState(challengeText: challenge);
+      } else {
+        throw Exception('Failed to fetch challenge');
+      }
     } catch (e) {
       state = state.copyWith(error: e.toString());
     } finally {
@@ -76,7 +85,7 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     final userData = await _currentUser();
     if (userData == null) return;
     final firestore = ref.read(firestoreServiceProvider);
-    final functions = ref.read(functionsServiceProvider);
+    final httpService = ref.read(httpServiceProvider);
     final newStreak = userData.streak + 1;
     await firestore.updateUser(userData.uid, {
       'streak': newStreak,
@@ -86,7 +95,12 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
     if ([3,7,14,30].contains(newStreak) && !(userData.streakMilestones['$newStreak'] == true)) {
       await firestore.updateUser(userData.uid, {'streakMilestones.$newStreak': true});
-      await functions.getMilestoneBlessing(religion: userData.religion ?? 'spiritual', streak: newStreak);
+      try {
+        await httpService.post('getMilestoneBlessing', {
+          'religion': userData.religion ?? 'spiritual',
+          'streak': newStreak,
+        });
+      } catch (_) {}
     }
 
     if (userData.religion != null) {

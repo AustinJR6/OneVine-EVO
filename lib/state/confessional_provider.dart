@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/functions_service.dart';
+import 'dart:convert';
+import '../state/http_provider.dart';
 import '../services/firestore_service.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
@@ -57,14 +58,21 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
     await firestore.updateUser(user.uid, {'tokenCount': userData.tokenCount - 1});
 
     try {
-      final response = await ref.read(functionsServiceProvider).askGemini(
-        history: newMessages,
-        religion: userData.religion ?? 'spiritual',
-      );
-      state = state.copyWith(
-        messages: [...newMessages, {'role': 'ai', 'text': response}],
-        loading: false,
-      );
+      final httpService = ref.read(httpServiceProvider);
+      final res = await httpService.post('askGeminiV2', {
+        'history': newMessages,
+        'religion': userData.religion ?? 'spiritual',
+      });
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final reply = data['text'] as String? ?? '';
+        state = state.copyWith(
+          messages: [...newMessages, {'role': 'ai', 'text': reply}],
+          loading: false,
+        );
+      } else {
+        throw Exception('Failed to get response');
+      }
     } catch (e) {
       state = state.copyWith(
         messages: [...newMessages, {'role': 'ai', 'text': 'Error: $e'}],
