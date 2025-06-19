@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/auth_providers.dart';
+import '../../state/firestore_providers.dart';
 import 'login_screen.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +16,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -25,16 +28,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _signup() async {
     if (_formKey.currentState!.validate()) {
+      setState(() { _loading = true; _error = null; });
       try {
         final authService = ref.read(authServiceProvider);
-        await authService.registerWithEmailAndPassword(
+        final firestore = ref.read(firestoreServiceProvider);
+        final user = await authService.registerWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
+        if (user != null) {
+          await firestore.createUser(user.uid, {
+            'tokenBalance': 0,
+            'weeklySkipCount': 0,
+            'journalEntries': [],
+            'dailyChallengeStatus': {},
+          });
+          if (mounted) context.go('/home');
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to sign up: $e')),
-        );
+        setState(() { _error = 'Failed to sign up'; });
+      } finally {
+        if (mounted) setState(() { _loading = false; });
       }
     }
   }
@@ -63,7 +77,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 validator: (value) =>
                     value!.isEmpty ? 'Please enter your password' : null,
               ),
-              ElevatedButton(onPressed: _signup, child: const Text('Sign Up')),
+              if (_loading)
+                const CircularProgressIndicator()
+              else
+                ElevatedButton(onPressed: _signup, child: const Text('Sign Up')),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
               TextButton(
                 onPressed: () => context.go('/login'),
                 child: const Text('Already have an account? Log in'),
