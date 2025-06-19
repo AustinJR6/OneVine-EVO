@@ -25,9 +25,11 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 Text('Email: ${authService.currentUser?.email ?? 'N/A'}',
                     style: const TextStyle(fontSize: 18)),
-                const SizedBox(height: 20),
-                const Text('Placeholder for profile update options...',
-                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic)),
+                const SizedBox(height: 12),
+                Text('Religion: ${user.religion ?? 'None'}'),
+                Text('Tokens: ${user.tokenCount}'),
+                Text('Streak: ${user.streak} days'),
+                Text('Points: ${user.individualPoints}'),
                 const Spacer(),
                 ElevatedButton(
                   onPressed: () async {
