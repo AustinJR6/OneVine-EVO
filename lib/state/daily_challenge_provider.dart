@@ -40,17 +40,25 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     if (userData == null) return;
 
     final last = userData.lastChallenge?.toDate();
-    if (last != null && DateTime.now().difference(last).inHours < 24 && userData.lastChallengeText != null) {
+    final now = DateTime.now();
+    if (last != null &&
+        last.year == now.year &&
+        last.month == now.month &&
+        last.day == now.day &&
+        userData.lastChallengeText != null) {
       state = state.copyWith(challengeText: userData.lastChallengeText);
       return;
     }
 
     state = state.copyWith(loading: true, error: null);
     try {
+      final auth = ref.read(firebaseAuthProvider);
+      final idToken = await auth.currentUser?.getIdToken();
       final httpService = ref.read(httpServiceProvider);
       final res = await httpService.post('getDailyChallenge', {
         'religion': userData.religion ?? 'spiritual',
-      });
+      }, idToken: idToken);
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final challenge = data['text'] as String? ?? '';
@@ -60,7 +68,8 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
         });
         state = DailyChallengeState(challengeText: challenge);
       } else {
-        throw Exception('Failed to fetch challenge');
+        state = state.copyWith(
+            error: 'Error ${res.statusCode}: ${res.body}');
       }
     } catch (e) {
       state = state.copyWith(error: e.toString());
@@ -70,13 +79,14 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
   }
 
   Future<void> handleSkip() async {
-    final userData = await _currentUser();
+    final userData = ref.read(userDataProvider).value ?? await _currentUser();
     if (userData == null) return;
     if (userData.tokenCount < 3) {
       state = state.copyWith(error: 'Not enough tokens');
       return;
     }
-    await ref.read(firestoreServiceProvider)
+    await ref
+        .read(firestoreServiceProvider)
         .updateUser(userData.uid, {'tokenCount': userData.tokenCount - 3});
     await fetchChallenge();
   }
@@ -85,6 +95,8 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     final userData = await _currentUser();
     if (userData == null) return;
     final firestore = ref.read(firestoreServiceProvider);
+    final auth = ref.read(firebaseAuthProvider);
+    final idToken = await auth.currentUser?.getIdToken();
     final httpService = ref.read(httpServiceProvider);
     final newStreak = userData.streak + 1;
     await firestore.updateUser(userData.uid, {
@@ -99,7 +111,7 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
         await httpService.post('getMilestoneBlessing', {
           'religion': userData.religion ?? 'spiritual',
           'streak': newStreak,
-        });
+        }, idToken: idToken);
       } catch (_) {}
     }
 

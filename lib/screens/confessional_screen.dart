@@ -9,6 +9,16 @@ class ConfessionalScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(confessionalProvider);
     final controller = TextEditingController(text: state.input);
+    final scrollController = ScrollController();
+
+    if (state.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(state.error!)));
+        ref.read(confessionalProvider.notifier).state =
+            state.copyWith(error: null);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Confessional')),
@@ -16,13 +26,16 @@ class ConfessionalScreen extends ConsumerWidget {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: scrollController,
               itemCount: state.messages.length,
               itemBuilder: (context, index) {
                 final msg = state.messages[index];
                 final isUser = msg['role'] == 'user';
                 return ListTile(
                   title: Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: isUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -49,12 +62,22 @@ class ConfessionalScreen extends ConsumerWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () async {
-                    final text = controller.text.trim();
-                    if (text.isEmpty) return;
-                    controller.clear();
-                    await ref.read(confessionalProvider.notifier).sendMessage(text);
-                  },
+                  onPressed: state.loading
+                      ? null
+                      : () async {
+                          final text = controller.text.trim();
+                          if (text.isEmpty) return;
+                          controller.clear();
+                          await ref
+                              .read(confessionalProvider.notifier)
+                              .sendMessage(text);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (scrollController.hasClients) {
+                              scrollController.jumpTo(
+                                  scrollController.position.maxScrollExtent);
+                            }
+                          });
+                        },
                 )
               ],
             ),
