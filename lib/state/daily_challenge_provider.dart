@@ -128,3 +128,4 @@ final dailyChallengeProvider =
     StateNotifierProvider<DailyChallengeNotifier, DailyChallengeState>((ref) {
   return DailyChallengeNotifier(ref);
 });
+

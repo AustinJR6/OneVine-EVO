@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/material.dart'; // Import Material for @required (or use required keyword)
 
 import '../models/user.dart';
@@ -7,9 +7,20 @@ import '../models/daily_challenge.dart';
 import 'functions_service.dart';
 
 class UserService with ChangeNotifier { // Added ChangeNotifier for Provider
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FunctionsService _functions = FunctionsService();
+
+  /// Expose the currently authenticated Firebase user.
+  fb_auth.User? get currentFirebaseUser => _auth.currentUser;
+
+  /// Public wrapper to check and reset weekly skips for the current user.
+  Future<void> checkAndResetWeeklySkips() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _checkAndResetWeeklySkips(user.uid);
+    }
+  }
 
   // Reference to the users collection
   CollectionReference _usersCollection(String uid) {

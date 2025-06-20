@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:onevine/services/user_service.dart'; // Assuming UserService is needed
-import 'package:provider/provider.dart'; // Assuming Provider is used for state management
-import 'package:onevine/screens/home_screen.dart'; // Assuming HomeScreen is the next screen
+import 'package:go_router/go_router.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -13,7 +11,6 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
-    final userService = Provider.of<UserService>(context); // Access UserService
 
     return Scaffold(
       appBar: AppBar(
@@ -31,14 +28,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Embark on a journey of spiritual reflection and growth.',
-              style: TextStyle(fontSize: 24),
-            ),
-            // Add your onboarding content here
-          ],
-        ),
+          const Text(
+            'Embark on a journey of spiritual reflection and growth.',
+            style: TextStyle(fontSize: 24),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => context.go('/home'),
+            child: const Text('Get Started'),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

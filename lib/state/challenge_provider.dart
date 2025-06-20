@@ -42,7 +42,7 @@ class ChallengeProvider with ChangeNotifier {
     if (_dailyChallenge != null && !_dailyChallenge!.completed && !_dailyChallenge!.skipped) {
       await _userService.completeDailyChallenge();
       // TODO: Implement token awarding logic and update _tokenCount
-      await fetchDailyChallenge(); // Refresh challenge status
+      await fetchDailyChallengeForToday(); // Refresh challenge status
       await _updateUserDataFromService(); // Refresh token count
     }
   }
@@ -52,14 +52,14 @@ class ChallengeProvider with ChangeNotifier {
       // Skip logic is handled within UserService.skipDailyChallenge,
       // including token deduction and weekly skip count update.
       await _userService.skipDailyChallenge();
-      await fetchDailyChallenge(); // Refresh challenge status
+      await fetchDailyChallengeForToday(); // Refresh challenge status
       await _updateUserDataFromService(); // Refresh token count and skip count
     }
   }
 
   // Helper method to update user data from the service
   Future<void> _updateUserDataFromService() async {
-     final user = _userService.getCurrentUser(); // Use a public getter
+    final user = _userService.currentFirebaseUser;
     if (user != null) {
       final userData = await _userService.getUserData(user.uid);
       if (userData != null) {
@@ -67,7 +67,7 @@ class ChallengeProvider with ChangeNotifier {
         _weeklySkipCount = userData.weeklySkipCount;
       }
     }
-     notifyListeners();
+    notifyListeners();
   }
 
     // Call this method in the ChallengeScreen or where needed to trigger data fetch
@@ -77,12 +77,12 @@ class ChallengeProvider with ChangeNotifier {
 
   // Method to reset weekly skips - likely called on a timer or app open
   Future<void> resetWeeklySkips() async {
-     final user = _userService._auth.currentUser;
-      if (user != null) {
-       await _userService.resetWeeklySkipCount(user.uid);
-       _weeklySkipCount = 0;
-       notifyListeners();
-     }
+    final user = _userService.currentFirebaseUser;
+    if (user != null) {
+      await _userService.resetWeeklySkipCount(user.uid);
+      _weeklySkipCount = 0;
+      notifyListeners();
+    }
   }
 
 }
