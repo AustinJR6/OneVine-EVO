@@ -92,3 +92,4 @@ final confessionalProvider =
     StateNotifierProvider<ConfessionalNotifier, ConfessionalState>((ref) {
   return ConfessionalNotifier(ref);
 });
+
