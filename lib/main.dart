@@ -66,7 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     redirect: (context, state) {
       final loggedIn = ref.read(currentUserProvider) != null;
-      final loggingIn = state.uri.toString() == '/login';
+      final loggingIn = state.location == '/login';
       if (!loggedIn) return loggingIn ? null : '/login';
       if (loggingIn) return '/home';
       return null;

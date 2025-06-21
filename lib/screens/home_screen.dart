@@ -3,10 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/firestore_providers.dart';
 import '../models/user_model.dart';
 import '../state/daily_challenge_status_provider.dart';
-import 'journal_screen.dart';
-import 'challenge_screen.dart';
-import 'profile_screen.dart';
-import 'quote_screen.dart';
 import 'religion_ai_screen.dart'; // Import the ReligionAIScreen
 
 class HomeScreen extends ConsumerStatefulWidget {
