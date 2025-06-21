@@ -43,7 +43,7 @@ class TriviaNotifier extends StateNotifier<TriviaState> {
     state = state.copyWith(loading: true, error: null, resultText: null);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final idToken = await ref.read(firebaseAuthProvider).currentUser?.getIdToken();
+      final idToken = await ref.read(authServiceProvider).getIdToken();
       final data = await httpService.post('getTriviaQuestion', {}, idToken: idToken);
       state = state.copyWith(
         story: data['story'] as String?,
@@ -58,7 +58,7 @@ class TriviaNotifier extends StateNotifier<TriviaState> {
   }
 
   Future<void> submitGuess(String religionGuess, String storyGuess) async {
-    final auth = ref.read(firebaseAuthProvider);
+    final auth = ref.read(authServiceProvider);
     final user = auth.currentUser;
     if (user == null || state.storyId == null) return;
     final firestore = ref.read(firestoreServiceProvider);
@@ -68,7 +68,7 @@ class TriviaNotifier extends StateNotifier<TriviaState> {
     state = state.copyWith(loading: true, error: null);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final idToken = await auth.currentUser?.getIdToken();
+      final idToken = await auth.getIdToken();
       final data = await httpService.post('validateTriviaAnswer', {
         'id': state.storyId,
         'religionGuess': religionGuess,

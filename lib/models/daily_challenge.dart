@@ -1,11 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class DailyChallenge {
   final String challengeText;
   final bool completed;
   final bool skipped;
-  final Timestamp timestampAssigned;
-  final Timestamp? timestampCompleted;
+  final DateTime timestampAssigned;
+  final DateTime? timestampCompleted;
   final int skipCost;
 
   DailyChallenge({
@@ -17,20 +15,19 @@ class DailyChallenge {
     required this.skipCost,
   });
 
-  // Factory constructor to create a DailyChallenge from a Firestore document
-  factory DailyChallenge.fromDocument(DocumentSnapshot doc) {
+  factory DailyChallenge.fromMap(Map<String, dynamic> data) {
     return DailyChallenge(
-      challengeText: doc['challengeText'] ?? '',
-      completed: doc['completed'] ?? false,
-      skipped: doc['skipped'] ?? false,
-      timestampAssigned: doc['timestampAssigned'] ?? Timestamp.now(),
-      timestampCompleted: doc['timestampCompleted'],
-      skipCost: doc['skipCost'] ?? 0,
+      challengeText: data['challengeText'] as String? ?? '',
+      completed: data['completed'] as bool? ?? false,
+      skipped: data['skipped'] as bool? ?? false,
+      timestampAssigned:
+          data['timestampAssigned'] as DateTime? ?? DateTime.now(),
+      timestampCompleted: data['timestampCompleted'] as DateTime?,
+      skipCost: data['skipCost'] as int? ?? 0,
     );
   }
 
-  // Method to convert a DailyChallenge to a Firestore document
-  Map<String, dynamic> toDocument() {
+  Map<String, dynamic> toMap() {
     return {
       'challengeText': challengeText,
       'completed': completed,

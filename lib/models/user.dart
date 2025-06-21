@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class User {
   final String uid;
   final List<Map<String, dynamic>> journalEntries;
   final int tokenBalance;
-  final Map<String, dynamic> dailyChallengeStatus; // This might be redundant with the new dailyChallenges subcollection, consider removing or refactoring
+  final Map<String, dynamic> dailyChallengeStatus;
   final int weeklySkipCount;
-  final Timestamp? lastSkipReset;
+  final DateTime? lastSkipReset;
 
   User({
     required this.uid,
@@ -17,18 +15,18 @@ class User {
     this.lastSkipReset,
   });
 
-  factory User.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory User.fromMap(Map<String, dynamic> data, String uid) {
     return User(
-      uid: doc.id,
+      uid: uid,
       journalEntries: (data['journalEntries'] as List<dynamic>?)
-              ?.map((e) => e as Map<String, dynamic>)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ??
           [],
-      tokenBalance: data['tokenBalance'] ?? 0,
-      dailyChallengeStatus: data['dailyChallengeStatus'] as Map<String, dynamic>? ?? {}, // Consider refactoring this
-      weeklySkipCount: data['weeklySkipCount'] ?? 0,
-      lastSkipReset: data['lastSkipReset'] as Timestamp?,
+      tokenBalance: data['tokenBalance'] as int? ?? 0,
+      dailyChallengeStatus:
+          Map<String, dynamic>.from(data['dailyChallengeStatus'] as Map? ?? {}),
+      weeklySkipCount: data['weeklySkipCount'] as int? ?? 0,
+      lastSkipReset: data['lastSkipReset'] as DateTime?,
     );
   }
 
@@ -36,7 +34,7 @@ class User {
     return {
       'journalEntries': journalEntries,
       'tokenBalance': tokenBalance,
-      'dailyChallengeStatus': dailyChallengeStatus, // Consider refactoring this
+      'dailyChallengeStatus': dailyChallengeStatus,
       'weeklySkipCount': weeklySkipCount,
       'lastSkipReset': lastSkipReset,
     };

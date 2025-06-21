@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/auth_providers.dart';
 import 'signup_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -84,22 +83,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) {
         context.go('/home');
       }
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       setState(() {
-        _errorMessage = e.message ?? 'An unknown error occurred.';
+        _errorMessage = e.toString();
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_errorMessage)),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'An unexpected error occurred.';
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An unexpected error occurred.')),
         );
       }
     } finally {

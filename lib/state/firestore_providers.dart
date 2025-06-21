@@ -4,13 +4,14 @@ import 'auth_providers.dart';
 import '../models/user_model.dart';
 
 final firestoreServiceProvider = Provider<FirestoreService>((ref) {
-  return FirestoreService();
+  final auth = ref.watch(authServiceProvider);
+  return FirestoreService(auth);
 });
 
 final userDataProvider = StreamProvider<UserModel?>((ref) {
-  final auth = ref.watch(firebaseAuthProvider);
+  final auth = ref.watch(authServiceProvider);
   final firestore = ref.watch(firestoreServiceProvider);
-  return auth.authStateChanges().asyncExpand((user) {
+  return auth.authStateChanges.asyncExpand((user) {
     if (user == null) return Stream.value(null);
     return firestore.watchUser(user.uid);
   });
