@@ -43,7 +43,7 @@ class ReligionAINotifier extends StateNotifier<ReligionAIState> {
   Future<void> askQuestion(String question) async {
     final trimmed = question.trim();
     if (trimmed.isEmpty) return;
-    final auth = ref.read(firebaseAuthProvider);
+    final auth = ref.read(authServiceProvider);
     final user = auth.currentUser;
     if (user == null) return;
     final userData = await ref.read(firestoreServiceProvider).getUser(user.uid);
@@ -52,7 +52,7 @@ class ReligionAINotifier extends StateNotifier<ReligionAIState> {
     state = state.copyWith(loading: true, error: null, question: trimmed);
     try {
       final httpService = ref.read(httpServiceProvider);
-      final idToken = await auth.currentUser?.getIdToken();
+      final idToken = await auth.getIdToken();
       final data = await httpService.post('askGeminiV2', {
         'history': [
           {'role': 'user', 'text': trimmed}

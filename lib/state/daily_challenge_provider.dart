@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
 import '../state/http_provider.dart';
 import '../services/http_service.dart';
@@ -29,7 +28,7 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
   final Ref ref;
 
   Future<UserModel?> _currentUser() async {
-    final auth = ref.read(firebaseAuthProvider);
+    final auth = ref.read(authServiceProvider);
     final user = auth.currentUser;
     if (user == null) return null;
     return await ref.read(firestoreServiceProvider).getUser(user.uid);
@@ -39,7 +38,7 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     final userData = await _currentUser();
     if (userData == null) return;
 
-    final last = userData.lastChallenge?.toDate();
+    final last = userData.lastChallenge;
     final now = DateTime.now();
     if (last != null &&
         last.year == now.year &&
@@ -52,8 +51,8 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
     state = state.copyWith(loading: true, error: null);
     try {
-      final auth = ref.read(firebaseAuthProvider);
-      final idToken = await auth.currentUser?.getIdToken();
+      final auth = ref.read(authServiceProvider);
+      final idToken = await auth.getIdToken();
       final httpService = ref.read(httpServiceProvider);
       final data = await httpService.post('getDailyChallenge', {
         'religion': userData.religion ?? 'spiritual',
@@ -61,7 +60,7 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
       final challenge = data['text'] as String? ?? '';
       await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
-        'lastChallenge': Timestamp.now(),
+        'lastChallenge': DateTime.now(),
         'lastChallengeText': challenge,
       });
       state = DailyChallengeState(challengeText: challenge);
@@ -91,8 +90,8 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     final userData = await _currentUser();
     if (userData == null) return;
     final firestore = ref.read(firestoreServiceProvider);
-    final auth = ref.read(firebaseAuthProvider);
-    final idToken = await auth.currentUser?.getIdToken();
+    final auth = ref.read(authServiceProvider);
+    final idToken = await auth.getIdToken();
     final httpService = ref.read(httpServiceProvider);
     final newStreak = userData.streak + 1;
     await firestore.updateUser(userData.uid, {

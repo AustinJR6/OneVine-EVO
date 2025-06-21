@@ -41,7 +41,7 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
 
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-    final auth = ref.read(firebaseAuthProvider);
+    final auth = ref.read(authServiceProvider);
     final user = auth.currentUser;
     if (user == null) return;
     final firestore = ref.read(firestoreServiceProvider);
@@ -62,7 +62,7 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
       final conversation = newMessages
           .map((m) => "${m['role']}: ${m['text']}")
           .join('\n');
-      final idToken = await auth.currentUser?.getIdToken();
+      final idToken = await auth.getIdToken();
       final httpService = ref.read(httpServiceProvider);
       final data = await httpService.post('askGeminiV2', {
         'conversation': conversation,

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserModel {
   final String uid;
   final String? religion;
@@ -7,7 +5,7 @@ class UserModel {
   final int tokenCount;
   final int streak;
   final String? lastChallengeText;
-  final Timestamp? lastChallenge;
+  final DateTime? lastChallenge;
   final int individualPoints;
   final Map<String, dynamic> streakMilestones;
 
@@ -23,18 +21,18 @@ class UserModel {
     required this.streakMilestones,
   });
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
+  factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
     return UserModel(
-      uid: doc.id,
-      religion: data['religion'],
-      organizationId: data['organizationId'],
-      tokenCount: data['tokenCount'] ?? 0,
-      streak: data['streak'] ?? 0,
-      lastChallengeText: data['lastChallengeText'],
-      lastChallenge: data['lastChallenge'],
-      individualPoints: data['individualPoints'] ?? 0,
-      streakMilestones: Map<String, dynamic>.from(data['streakMilestones'] ?? {}),
+      uid: uid,
+      religion: data['religion'] as String?,
+      organizationId: data['organizationId'] as String?,
+      tokenCount: (data['tokenCount'] as int?) ?? 0,
+      streak: (data['streak'] as int?) ?? 0,
+      lastChallengeText: data['lastChallengeText'] as String?,
+      lastChallenge: data['lastChallenge'] as DateTime?,
+      individualPoints: (data['individualPoints'] as int?) ?? 0,
+      streakMilestones:
+          Map<String, dynamic>.from(data['streakMilestones'] as Map? ?? {}),
     );
   }
 

@@ -1,20 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
-import 'package:flutter/material.dart'; // Import Material for @required (or use required keyword)
-
+import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/daily_challenge.dart';
+import 'auth_service.dart';
+import 'firestore_service.dart';
 import 'functions_service.dart';
 
-class UserService with ChangeNotifier { // Added ChangeNotifier for Provider
-  final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FunctionsService _functions = FunctionsService();
+class UserService with ChangeNotifier {
+  final AuthService _auth;
+  final FirestoreService _firestore;
+  final FunctionsService _functions;
 
-  /// Expose the currently authenticated Firebase user.
-  fb_auth.User? get currentFirebaseUser => _auth.currentUser;
+  UserService(this._auth, this._firestore, this._functions);
 
-  /// Public wrapper to check and reset weekly skips for the current user.
+  AuthUser? get currentFirebaseUser => _auth.currentUser;
+
   Future<void> checkAndResetWeeklySkips() async {
     final user = _auth.currentUser;
     if (user != null) {
@@ -22,231 +21,106 @@ class UserService with ChangeNotifier { // Added ChangeNotifier for Provider
     }
   }
 
-  // Reference to the users collection
-  CollectionReference _usersCollection(String uid) {
-    return _firestore.collection('users').doc(uid).collection('dailyChallenges');
-  }
-
-  // Reference to the user's profile document
-  DocumentReference _userProfileDoc(String uid) {
-    return _firestore.collection('users').doc(uid);
-  }
-
-  // Reference to the challenge pool configuration
-  final DocumentReference _challengePoolDoc = FirebaseFirestore.instance.collection('config').doc('challengePool');
-
-  // Method to get today's daily challenge
   Future<DailyChallenge?> getDailyChallenge() async {
     final user = _auth.currentUser;
     if (user == null) return null;
-
-    // Check and reset weekly skip count if necessary
     await _checkAndResetWeeklySkips(user.uid);
-
     final today = DateTime.now();
-    final todayDateString = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-
-    try {
-      final doc = await _usersCollection(user.uid).doc(todayDateString).get();
-
-      if (doc.exists) {
-        return DailyChallenge.fromDocument(doc);
-      } else {
-        // No challenge for today, assign a new one
-        await assignDailyChallenge();
-        // Fetch the newly assigned challenge
-        final updatedDoc = await _usersCollection(user.uid).doc(todayDateString).get();
-        return DailyChallenge.fromDocument(updatedDoc);
-      }
-    } catch (e) {
-      print("Error getting daily challenge: $e");
-      return null;
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final path = 'users/${user.uid}/dailyChallenges/$todayStr';
+    final data = await _firestore.getDocument(path);
+    if (data != null) {
+      return DailyChallenge.fromMap(data);
+    } else {
+      await assignDailyChallenge();
+      final updated = await _firestore.getDocument(path);
+      return updated != null ? DailyChallenge.fromMap(updated) : null;
     }
   }
 
-  // Method to assign a new daily challenge
   Future<void> assignDailyChallenge() async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     final today = DateTime.now();
-    final todayDateString = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-
-    try {
-      final selectedChallengeText = await _functions.getDailyChallenge(religion: 'Christian');
-
-      // --- Skip Cost Calculation ---
-      final userData = await getUserData(user.uid);
-      int weeklySkips = userData?.weeklySkipCount ?? 0;
-      int skipCost = weeklySkips == 0 ? 0 : 1 << (weeklySkips - 1); // Exponential skip cost (0 for first skip, then 1, 2, 4, ...)
-
-
-      final newChallenge = DailyChallenge(
-        challengeText: selectedChallengeText,
-        completed: false,
-        skipped: false,
-        timestampAssigned: Timestamp.now(),
-        skipCost: skipCost,
-      );
-
-      await _usersCollection(user.uid).doc(todayDateString).set(newChallenge.toDocument());
-
-      // Notify listeners that challenge has been assigned
-       notifyListeners();
-
-    } catch (e) {
-      print("Error assigning daily challenge: $e");
-    }
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final userData = await getUserData(user.uid);
+    final weeklySkips = userData?.weeklySkipCount ?? 0;
+    final skipCost = weeklySkips == 0 ? 0 : 1 << (weeklySkips - 1);
+    final challengeText = await _functions.getDailyChallenge(religion: 'Christian');
+    final challenge = DailyChallenge(
+      challengeText: challengeText,
+      completed: false,
+      skipped: false,
+      timestampAssigned: DateTime.now(),
+      skipCost: skipCost,
+    );
+    await _firestore.setDocument('users/${user.uid}/dailyChallenges/$todayStr', challenge.toMap());
+    notifyListeners();
   }
 
-  // Method to mark challenge as completed
   Future<void> completeDailyChallenge() async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     final today = DateTime.now();
-    final todayDateString = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-
-    try {
-      await _usersCollection(user.uid).doc(todayDateString).update({
-        'completed': true,
-        'timestampCompleted': Timestamp.now(),
-      });
-
-      // --- Token Awarding Logic ---
-      final userData = await getUserData(user.uid);
-      int currentTokenBalance = userData?.tokenBalance ?? 0;
-      const int tokensToAward = 3; // Configurable number of tokens
-
-      await _userProfileDoc(user.uid).update({
-        'tokenBalance': currentTokenBalance + tokensToAward,
-      });
-
-      // Notify listeners that challenge is completed and tokens updated
-      notifyListeners();
-
-    } catch (e) {
-      print("Error completing daily challenge: $e");
-      // TODO: Handle error in UI
-    }
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    await _firestore.updateDocumentPath('users/${user.uid}/dailyChallenges/$todayStr', {
+      'completed': true,
+      'timestampCompleted': DateTime.now(),
+    });
+    final data = await getUserData(user.uid);
+    final tokens = data?.tokenBalance ?? 0;
+    await _firestore.updateUser(user.uid, {'tokenBalance': tokens + 3});
+    notifyListeners();
   }
 
-  // Method to mark challenge as skipped
   Future<void> skipDailyChallenge() async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     final today = DateTime.now();
-    final todayDateString = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-
-     try {
-      // --- Weekly Skip Reset Check ---
-      await _checkAndResetWeeklySkips(user.uid);
-
-      // --- Token Deduction and Weekly Skip Count Logic ---
-      final userData = await getUserData(user.uid);
-      int currentTokenBalance = userData?.tokenBalance ?? 0;
-      int weeklySkips = userData?.weeklySkipCount ?? 0;
-      final lastSkipReset = userData?.lastSkipReset?.toDate();
-
-      int tokensToDeduct = 0;
-      if (weeklySkips > 0) {
-         tokensToDeduct = 1 << (weeklySkips - 1); // Exponential cost after the first skip
-      }
-
-      // Check if enough tokens are available
-      if (currentTokenBalance < tokensToDeduct) {
-        print("Not enough tokens to skip challenge.");
-        // TODO: Handle insufficient tokens in UI (e.g., show a message)
-        return;
-      }
-
-      await _usersCollection(user.uid).doc(todayDateString).update({
-        'skipped': true,
-      });
-
-      // Deduct tokens if not a free skip
-      if (tokensToDeduct > 0) {
-         await _userProfileDoc(user.uid).update({
-          'tokenBalance': currentTokenBalance - tokensToDeduct,
-          'weeklySkipCount': weeklySkips + 1,
-          'lastSkipReset': lastSkipReset != null && today.difference(lastSkipReset).inDays < 7
-            ? Timestamp.fromDate(lastSkipReset) // Don't update reset time if within the week
-            : Timestamp.now(), // Update reset time if a new week starts
-        });
-      } else {
-        // It's a free skip
-         await _userProfileDoc(user.uid).update({
-          'weeklySkipCount': weeklySkips + 1,
-           'lastSkipReset': lastSkipReset != null && today.difference(lastSkipReset).inDays < 7
-            ? Timestamp.fromDate(lastSkipReset) // Don't update reset time if within the week
-            : Timestamp.now(), // Update reset time if a new week starts
-        });
-      }
-
-      // Notify listeners that challenge is skipped and tokens/skip count updated
-      notifyListeners();
-
-    } catch (e) {
-      print("Error skipping daily challenge: $e");
-      // TODO: Handle error in UI
-    }
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final data = await getUserData(user.uid);
+    final tokens = data?.tokenBalance ?? 0;
+    final weeklySkips = data?.weeklySkipCount ?? 0;
+    final lastSkipReset = data?.lastSkipReset;
+    int cost = 0;
+    if (weeklySkips > 0) cost = 1 << (weeklySkips - 1);
+    if (tokens < cost) return;
+    await _firestore.updateDocumentPath('users/${user.uid}/dailyChallenges/$todayStr', {
+      'skipped': true,
+    });
+    await _firestore.updateUser(user.uid, {
+      'tokenBalance': tokens - cost,
+      'weeklySkipCount': weeklySkips + 1,
+      'lastSkipReset': lastSkipReset != null && today.difference(lastSkipReset).inDays < 7 ? lastSkipReset : DateTime.now(),
+    });
+    notifyListeners();
   }
 
-
-  // Method to check and reset weekly skip count
   Future<void> _checkAndResetWeeklySkips(String uid) async {
-      try {
-      final userData = await getUserData(uid);
-      final lastSkipReset = userData?.lastSkipReset?.toDate();
-      final now = DateTime.now();
-
-      if (lastSkipReset != null && now.difference(lastSkipReset).inDays >= 7) {
-        await resetWeeklySkipCount(uid);
-      }
-       // Notify listeners if reset occurred
-      notifyListeners();
-    } catch (e) {
-      print("Error checking and resetting weekly skips: $e");
+    final data = await getUserData(uid);
+    final last = data?.lastSkipReset;
+    final now = DateTime.now();
+    if (last != null && now.difference(last).inDays >= 7) {
+      await resetWeeklySkipCount(uid);
     }
+    notifyListeners();
   }
 
-
-  // Method to get user data
   Future<User?> getUserData(String uid) async {
-    try {
-      final doc = await _userProfileDoc(uid).get();
-      if (doc.exists) {
-        return User.fromFirestore(doc);
-      } else {
-        return null;
-      }
-    } catch (e) {
-      print("Error getting user data: $e");
-      return null;
-    }
+    final doc = await _firestore.getDocument('users/$uid');
+    return doc != null ? User.fromMap(doc, uid) : null;
   }
 
-  // Method to update user data (for tokens and skip count)
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
-    try {
-      await _userProfileDoc(uid).update(data);
-       notifyListeners(); // Notify listeners of user data changes
-    } catch (e) {
-      print("Error updating user data: $e");
-    }
+    await _firestore.updateUser(uid, data);
+    notifyListeners();
   }
 
-  // Method to reset weekly skip count
   Future<void> resetWeeklySkipCount(String uid) async {
-     try {
-      await _userProfileDoc(uid).update({
-        'weeklySkipCount': 0,
-        'lastSkipReset': Timestamp.now(),
-      });
-       notifyListeners(); // Notify listeners of skip count reset
-    } catch (e) {
-      print("Error resetting weekly skip count: $e");
-    }
+    await _firestore.updateUser(uid, {
+      'weeklySkipCount': 0,
+      'lastSkipReset': DateTime.now(),
+    });
+    notifyListeners();
   }
 }

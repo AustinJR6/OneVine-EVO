@@ -1,53 +1,89 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'firebase_config.dart';
+
+class AuthUser {
+  final String uid;
+  final String email;
+  final String idToken;
+  final String refreshToken;
+
+  AuthUser({
+    required this.uid,
+    required this.email,
+    required this.idToken,
+    required this.refreshToken,
+  });
+}
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  AuthUser? _currentUser;
+  final _controller = StreamController<AuthUser?>.broadcast();
 
-  // Get current user
-  User? getCurrentUser() {
-    return _auth.currentUser;
-  }
+  Stream<AuthUser?> get authStateChanges => _controller.stream;
+  AuthUser? get currentUser => _currentUser;
 
-  // Sign in with email and password
-  Future<User?> signInWithEmailAndPassword(String email, String password) async {
-    try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+  Future<String?> getIdToken() async => _currentUser?.idToken;
+
+  Future<AuthUser?> signInWithEmailAndPassword(String email, String password) async {
+    final uri = Uri.parse(
+        'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$firebaseApiKey');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'returnSecureToken': true,
+      }),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final user = AuthUser(
+        uid: data['localId'] as String,
+        email: data['email'] as String,
+        idToken: data['idToken'] as String,
+        refreshToken: data['refreshToken'] as String,
       );
-      return result.user;
-    } catch (e) {
-      print(e.toString());
-      return null;
+      _currentUser = user;
+      _controller.add(user);
+      return user;
+    } else {
+      throw Exception(jsonDecode(res.body)['error']['message']);
     }
   }
 
-  // Register with email and password
-  Future<User?> registerWithEmailAndPassword(String email, String password) async {
-    try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+  Future<AuthUser?> registerWithEmailAndPassword(String email, String password) async {
+    final uri = Uri.parse(
+        'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$firebaseApiKey');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'returnSecureToken': true,
+      }),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final user = AuthUser(
+        uid: data['localId'] as String,
+        email: data['email'] as String,
+        idToken: data['idToken'] as String,
+        refreshToken: data['refreshToken'] as String,
       );
-      return result.user;
-    } catch (e) {
-      print(e.toString());
-      return null;
+      _currentUser = user;
+      _controller.add(user);
+      return user;
+    } else {
+      throw Exception(jsonDecode(res.body)['error']['message']);
     }
   }
 
-  // Sign out
   Future<void> signOut() async {
-    try {
-      return await _auth.signOut();
-    } catch (e) {
-      print(e.toString());
-      return;
-    }
-  }
-
-  // Auth state changes stream
-  Stream<User?> get user {
-    return _auth.authStateChanges();
+    _currentUser = null;
+    _controller.add(null);
   }
 }

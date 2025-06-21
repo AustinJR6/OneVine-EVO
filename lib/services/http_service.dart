@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 
 /// Exception thrown when a HTTP call fails.
 class HttpServiceException implements Exception {
@@ -35,7 +34,6 @@ class HttpService {
     String? idToken,
     Map<String, String>? headers,
   }) async {
-    idToken ??= await FirebaseAuth.instance.currentUser?.getIdToken();
 
     final requestHeaders = <String, String>{
       'Content-Type': 'application/json',

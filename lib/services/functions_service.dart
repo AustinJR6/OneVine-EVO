@@ -1,28 +1,29 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'http_service.dart';
 
 class FunctionsService {
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  final HttpService _http;
+  FunctionsService(this._http);
 
-  Future<String> askGemini({required List<Map<String, String>> history, required String religion}) async {
-    final result = await _functions.httpsCallable('askGeminiV2').call({
+  Future<String> askGemini({required List<Map<String, String>> history, required String religion, String? idToken}) async {
+    final data = await _http.post('askGeminiV2', {
       'history': history,
       'religion': religion,
-    });
-    return result.data['text'] as String? ?? '';
+    }, idToken: idToken);
+    return data['text'] as String? ?? '';
   }
 
-  Future<String> getDailyChallenge({required String religion}) async {
-    final result = await _functions.httpsCallable('getDailyChallenge').call({
+  Future<String> getDailyChallenge({required String religion, String? idToken}) async {
+    final data = await _http.post('getDailyChallenge', {
       'religion': religion,
-    });
-    return result.data['text'] as String? ?? '';
+    }, idToken: idToken);
+    return data['text'] as String? ?? '';
   }
 
-  Future<String> getMilestoneBlessing({required String religion, required int streak}) async {
-    final result = await _functions.httpsCallable('getMilestoneBlessing').call({
+  Future<String> getMilestoneBlessing({required String religion, required int streak, String? idToken}) async {
+    final data = await _http.post('getMilestoneBlessing', {
       'religion': religion,
       'streak': streak,
-    });
-    return result.data['text'] as String? ?? '';
+    }, idToken: idToken);
+    return data['text'] as String? ?? '';
   }
 }
