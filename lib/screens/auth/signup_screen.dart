@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/auth_providers.dart';
 import '../../state/firestore_providers.dart';
-import 'login_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {

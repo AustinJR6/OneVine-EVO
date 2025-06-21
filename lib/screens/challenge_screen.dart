@@ -37,14 +37,13 @@ class ChallengeScreen extends ConsumerWidget {
           }
 
           if (state.error != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.error!)),
-              );
-              ref.read(dailyChallengeProvider.notifier)
-                  .state = state.copyWith(error: null);
-            });
-          }
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.error!)),
+                );
+                ref.read(dailyChallengeProvider.notifier).clearError();
+              });
+            }
 
           return Padding(
             padding: const EdgeInsets.all(16.0),

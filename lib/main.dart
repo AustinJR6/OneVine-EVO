@@ -84,7 +84,7 @@ void main() async {
 }
 
 class MyApp extends ConsumerWidget { // Changed to ConsumerWidget to access provider
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) { // Added WidgetRef
