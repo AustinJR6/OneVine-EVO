@@ -121,6 +121,10 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
     state = state.copyWith();
   }
+
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
 }
 
 final dailyChallengeProvider =
