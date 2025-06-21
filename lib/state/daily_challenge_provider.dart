@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/firestore_service.dart';
-import '../state/http_provider.dart';
-import '../services/http_service.dart';
+import 'gemini_provider.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 import '../models/user_model.dart';
@@ -51,21 +49,15 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
 
     state = state.copyWith(loading: true, error: null);
     try {
-      final auth = ref.read(authServiceProvider);
-      final idToken = await auth.getIdToken();
-      final httpService = ref.read(httpServiceProvider);
-      final data = await httpService.post('getDailyChallenge', {
-        'religion': userData.religion ?? 'spiritual',
-      }, idToken: idToken);
-
-      final challenge = data['text'] as String? ?? '';
+      final gemini = ref.read(geminiServiceProvider);
+      final challenge = await gemini.generateChallenge(
+        userData.religion ?? 'spiritual',
+      );
       await ref.read(firestoreServiceProvider).updateUser(userData.uid, {
         'lastChallenge': DateTime.now(),
         'lastChallengeText': challenge,
       });
       state = DailyChallengeState(challengeText: challenge);
-    } on HttpServiceException catch (e) {
-      state = state.copyWith(error: e.message);
     } catch (e) {
       state = state.copyWith(error: e.toString());
     } finally {
@@ -90,9 +82,6 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     final userData = await _currentUser();
     if (userData == null) return;
     final firestore = ref.read(firestoreServiceProvider);
-    final auth = ref.read(authServiceProvider);
-    final idToken = await auth.getIdToken();
-    final httpService = ref.read(httpServiceProvider);
     final newStreak = userData.streak + 1;
     await firestore.updateUser(userData.uid, {
       'streak': newStreak,
@@ -103,11 +92,10 @@ class DailyChallengeNotifier extends StateNotifier<DailyChallengeState> {
     if ([3,7,14,30].contains(newStreak) && !(userData.streakMilestones['$newStreak'] == true)) {
       await firestore.updateUser(userData.uid, {'streakMilestones.$newStreak': true});
       try {
-        await httpService.post('getMilestoneBlessing', {
-          'religion': userData.religion ?? 'spiritual',
-          'streak': newStreak,
-        }, idToken: idToken);
-      } on HttpServiceException {
+        final gemini = ref.read(geminiServiceProvider);
+        await gemini.generateText(
+            'Offer a brief blessing from the perspective of ${userData.religion ?? 'spiritual'} for achieving a $newStreak-day streak.');
+      } catch (_) {
         // Ignore blessing errors silently
       }
     }

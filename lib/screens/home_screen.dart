@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/firestore_providers.dart';
 import '../models/user_model.dart';
+import '../state/daily_challenge_status_provider.dart';
 import 'journal_screen.dart';
 import 'challenge_screen.dart';
 import 'profile_screen.dart';
@@ -31,6 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (user == null) {
             return const Center(child: Text('User data not found.'));
           }
+          final challengeAsync = ref.watch(dailyChallengeStatusProvider);
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -42,8 +44,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Text('Tokens: ${user.tokenCount}', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 16),
                 Text('Daily Challenge Status:', style: Theme.of(context).textTheme.titleLarge),
-                // TODO: Display actual challenge status based on user.dailyChallengeStatus
-                Text('Challenge status goes here.'),
+                challengeAsync.when(
+                  data: (challenge) {
+                    if (challenge == null) return const Text('No challenge.');
+                    if (challenge.completed) return const Text('Completed');
+                    if (challenge.skipped) return const Text('Skipped');
+                    return const Text('Pending');
+                  },
+                  loading: () => const Text('Loading...'),
+                  error: (e, _) => const Text('Error'),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
