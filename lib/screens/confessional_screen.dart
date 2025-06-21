@@ -15,8 +15,7 @@ class ConfessionalScreen extends ConsumerWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(state.error!)));
-        ref.read(confessionalProvider.notifier).state =
-            state.copyWith(error: null);
+        ref.read(confessionalProvider.notifier).clearError();
       });
     }
 

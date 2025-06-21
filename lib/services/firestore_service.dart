@@ -23,10 +23,18 @@ class FirestoreService {
   }
 
   Map<String, dynamic> _encodeValue(dynamic value) {
-    if (value is int) return {'integerValue': value.toString()};
-    if (value is double) return {'doubleValue': value};
-    if (value is bool) return {'booleanValue': value};
-    if (value is DateTime) return {'timestampValue': value.toIso8601String()};
+    if (value is int) {
+      return {'integerValue': value.toString()};
+    }
+    if (value is double) {
+      return {'doubleValue': value};
+    }
+    if (value is bool) {
+      return {'booleanValue': value};
+    }
+    if (value is DateTime) {
+      return {'timestampValue': value.toIso8601String()};
+    }
     if (value is Map<String, dynamic>) {
       return {
         'mapValue': {'fields': value.map((k, v) => MapEntry(k, _encodeValue(v)))}
@@ -36,13 +44,21 @@ class FirestoreService {
   }
 
   dynamic _decodeValue(Map<String, dynamic> value) {
-    if (value.containsKey('stringValue')) return value['stringValue'];
-    if (value.containsKey('integerValue'))
+    if (value.containsKey('stringValue')) {
+      return value['stringValue'];
+    }
+    if (value.containsKey('integerValue')) {
       return int.tryParse(value['integerValue'] as String) ?? 0;
-    if (value.containsKey('doubleValue')) return value['doubleValue'];
-    if (value.containsKey('booleanValue')) return value['booleanValue'];
-    if (value.containsKey('timestampValue'))
+    }
+    if (value.containsKey('doubleValue')) {
+      return value['doubleValue'];
+    }
+    if (value.containsKey('booleanValue')) {
+      return value['booleanValue'];
+    }
+    if (value.containsKey('timestampValue')) {
       return DateTime.parse(value['timestampValue']);
+    }
     if (value.containsKey('mapValue')) {
       final fields = value['mapValue']['fields'] as Map<String, dynamic>? ?? {};
       return fields.map((k, v) => MapEntry(k, _decodeValue(v)));
@@ -63,7 +79,9 @@ class FirestoreService {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final fields = data['fields'] as Map<String, dynamic>?;
-      if (fields == null) return null;
+      if (fields == null) {
+        return null;
+      }
       return _decodeFields(fields);
     }
     return null;
@@ -87,7 +105,9 @@ class FirestoreService {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final fields = data['fields'] as Map<String, dynamic>?;
-      if (fields == null) return null;
+      if (fields == null) {
+        return null;
+      }
       return UserModel.fromMap(_decodeFields(fields), uid);
     }
     return null;

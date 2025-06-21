@@ -36,6 +36,10 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
 
   final Ref ref;
 
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
+
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
     final auth = ref.read(authServiceProvider);

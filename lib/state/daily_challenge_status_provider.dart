@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/daily_challenge.dart';
-import '../services/firestore_service.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 
