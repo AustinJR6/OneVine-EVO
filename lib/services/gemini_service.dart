@@ -1,68 +1,82 @@
-// For @required or required
+import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+import 'package:logging/logging.dart';
+
+/// Service for interacting with the Google Gemini REST API.
 class GeminiService {
-  // Method to send a text prompt to the Gemini API and receive a text response.
-  // TODO: Implement actual API call to Gemini.
-  Future<String> generateText({required String prompt}) async {
-    // Placeholder for Gemini API call
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    const String placeholderResponse = "This is a placeholder response from Gemini.";
+  GeminiService({required this.apiKey, http.Client? client})
+      : _client = client ?? http.Client();
 
-    // TODO: Replace with actual API call using a library like http or dio.
-    // Example:
-    // final response = await http.post(
-    //   Uri.parse('YOUR_GEMINI_API_ENDPOINT/generateText'),
-    //   headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_API_KEY'},
-    //   body: jsonEncode({'prompt': prompt}),
-    // );
-    //
-    // if (response.statusCode == 200) {
-    //   final data = jsonDecode(response.body);
-    //   return data['generatedText']; // Adjust based on actual API response structure
-    // } else {
-    //   throw Exception('Failed to get response from Gemini API');
-    // }
+  final String apiKey;
+  final http.Client _client;
+  final _log = Logger('GeminiService');
 
-    print("GeminiService: Received prompt - \"$prompt\"");
-    print("GeminiService: Returning placeholder response - \"$placeholderResponse\"");
+  static const _baseUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
-    return placeholderResponse;
-  }
-
-  // Method to send a prompt with text and optional image data to the Gemini API.
-  // TODO: Implement actual API call to Gemini with multi-modal support.
-  Future<String> generateTextWithImage({required String prompt, List<int>? imageData}) async {
-     // Placeholder for Gemini API call with image data
-    await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
-    const String placeholderResponse = "This is a placeholder multi-modal response from Gemini.";
-
-    // TODO: Replace with actual API call for multi-modal input.
-    // This will depend on the Gemini API's requirements for image data.
-    // Example:
-    // final response = await http.post(
-    //   Uri.parse('YOUR_GEMINI_API_ENDPOINT/generateTextWithImage'),
-    //   headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_API_KEY'},
-    //   body: jsonEncode({'prompt': prompt, 'imageData': imageData}), // Adjust based on actual API structure
-    // );
-    //
-    // if (response.statusCode == 200) {
-    //   final data = jsonDecode(response.body);
-    //   return data['generatedText']; // Adjust based on actual API response structure
-    // } else {
-    //   throw Exception('Failed to get multi-modal response from Gemini API');
-    // }
-
-
-    print("GeminiService: Received multi-modal prompt - \"$prompt\"");
-    if (imageData != null) {
-      print("GeminiService: Received image data (byte count: ${imageData.length})");
+  Future<String> _post(Map<String, dynamic> body) async {
+    final uri = Uri.parse('$_baseUrl?key=$apiKey');
+    _log.fine('Sending request to $uri');
+    final res = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final text = data['candidates']?[0]?['content']?['parts']?[0]?['text']
+          as String?;
+      return text ?? '';
     }
-    print("GeminiService: Returning placeholder multi-modal response - \"$placeholderResponse\"");
-
-
-    return placeholderResponse;
+    _log.warning('Gemini error: ${res.statusCode} - ${res.body}');
+    throw Exception('Gemini request failed (${res.statusCode})');
   }
 
-  // Add other methods for different Gemini functionalities as needed.
-  // TODO: Consider adding methods for chat-based interactions, specific tasks, etc.
+  /// Generate text from a simple prompt.
+  Future<String> generateText(String prompt) {
+    return _post({
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt}
+          ]
+        }
+      ]
+    });
+  }
+
+  /// Generate a response from a conversation history.
+  Future<String> chat(List<Map<String, String>> history, String religion) async {
+    final conversation = history.map((m) => "${m['role']}: ${m['text']}").join('\n');
+    final prompt =
+        'Act as a spiritual guide of $religion. Continue the conversation:\n$conversation';
+    return generateText(prompt);
+  }
+
+  /// Generate a daily challenge for a given religion.
+  Future<String> generateChallenge(String religion) async {
+    final prompt =
+        'Provide a short daily challenge for a follower of $religion.';
+    return generateText(prompt);
+  }
+
+  /// Generate text with optional inline image data.
+  Future<String> generateTextWithImage({required String prompt, List<int>? imageData}) {
+    final parts = [
+      {'text': prompt},
+      if (imageData != null)
+        {
+          'inlineData': {
+            'mimeType': 'image/png',
+            'data': base64Encode(imageData),
+          }
+        }
+    ];
+    return _post({
+      'contents': [
+        {'parts': parts}
+      ]
+    });
+  }
 }

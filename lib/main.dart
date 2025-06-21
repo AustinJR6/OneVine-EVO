@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'utils/async_extensions.dart';
 
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -65,7 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
     redirect: (context, state) {
       final loggedIn = ref.read(currentUserProvider) != null;
-      final loggingIn = state.location == '/login';
+      final loggingIn = state.uri.toString() == '/login';
       if (!loggedIn) return loggingIn ? null : '/login';
       if (loggingIn) return '/home';
       return null;

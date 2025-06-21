@@ -40,7 +40,7 @@ class ChallengeProvider with ChangeNotifier {
   Future<void> completeChallenge() async {
     if (_dailyChallenge != null && !_dailyChallenge!.completed && !_dailyChallenge!.skipped) {
       await _userService.completeDailyChallenge();
-      // TODO: Implement token awarding logic and update _tokenCount
+      _tokenCount += 3; // award tokens locally
       await fetchDailyChallengeForToday(); // Refresh challenge status
       await _updateUserDataFromService(); // Refresh token count
     }

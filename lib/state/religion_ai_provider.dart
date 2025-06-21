@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
-import '../state/http_provider.dart';
-import '../services/http_service.dart';
+import 'gemini_provider.dart';
 
 class ReligionAIState {
   final String question;
@@ -51,21 +50,18 @@ class ReligionAINotifier extends StateNotifier<ReligionAIState> {
 
     state = state.copyWith(loading: true, error: null, question: trimmed);
     try {
-      final httpService = ref.read(httpServiceProvider);
-      final idToken = await auth.getIdToken();
-      final data = await httpService.post('askGeminiV2', {
-        'history': [
+      final gemini = ref.read(geminiServiceProvider);
+      final text = await gemini.chat(
+        [
           {'role': 'user', 'text': trimmed}
         ],
-        'religion': userData.religion ?? 'spiritual',
-      }, idToken: idToken);
+        userData.religion ?? 'spiritual',
+      );
 
       state = state.copyWith(
-        response: data['text'] as String? ?? '',
+        response: text,
         loading: false,
       );
-    } on HttpServiceException catch (e) {
-      state = state.copyWith(error: e.message, loading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), loading: false);
     }

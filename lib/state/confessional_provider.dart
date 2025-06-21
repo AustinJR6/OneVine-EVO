@@ -1,8 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:convert';
-import '../state/http_provider.dart';
-import '../services/http_service.dart';
-import '../services/firestore_service.dart';
+import 'gemini_provider.dart';
 import 'auth_providers.dart';
 import 'firestore_providers.dart';
 
@@ -59,29 +56,18 @@ class ConfessionalNotifier extends StateNotifier<ConfessionalState> {
     await firestore.updateUser(user.uid, {'tokenCount': userData.tokenCount - 1});
 
     try {
-      final conversation = newMessages
-          .map((m) => "${m['role']}: ${m['text']}")
-          .join('\n');
-      final idToken = await auth.getIdToken();
-      final httpService = ref.read(httpServiceProvider);
-      final data = await httpService.post('askGeminiV2', {
-        'conversation': conversation,
-        'religion': userData.religion ?? 'spiritual',
-      }, idToken: idToken);
-
-      final reply = data['text'] as String? ?? '';
+      final gemini = ref.read(geminiServiceProvider);
+      final reply = await gemini.chat(
+        newMessages,
+        userData.religion ?? 'spiritual',
+      );
       state = state.copyWith(
         messages: [...newMessages, {'role': 'ai', 'text': reply}],
         loading: false,
       );
-    } on HttpServiceException catch (e) {
+    } on Exception catch (e) {
       state = state.copyWith(
-        messages: [...newMessages, {'role': 'ai', 'text': e.message}],
-        loading: false,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        messages: [...newMessages, {'role': 'ai', 'text': 'Error: $e'}],
+        messages: [...newMessages, {'role': 'ai', 'text': e.toString()}],
         loading: false,
       );
     }
