@@ -23,7 +23,7 @@ class ProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Email: ${authService.currentUser?.email ?? 'N/A'}',
+                Text('Email: ${authService.getCurrentUser()?.email ?? 'N/A'}',
                     style: const TextStyle(fontSize: 18)),
                 const SizedBox(height: 12),
                 Text('Religion: ${user.religion ?? 'None'}'),

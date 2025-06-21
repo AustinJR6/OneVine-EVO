@@ -1,4 +1,0 @@
-const BASE_URL = process.env.EXPO_PUBLIC_FUNCTION_BASE_URL;
-
-export const GEMINI_API_URL = `${BASE_URL}/askGeminiV2`;
-export const STRIPE_API_URL = `${BASE_URL}/createCheckoutSession`;

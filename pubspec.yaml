@@ -31,9 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  firebase_core: ^2.0.0  # Use a valid version constraint
-  firebase_auth: ^4.0.0 # Use a valid version constraint
-  cloud_firestore: ^4.0.0 # Use a valid version constraint
+
   cloud_functions: ^4.0.6
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.3.6
